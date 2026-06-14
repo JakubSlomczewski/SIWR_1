@@ -9,6 +9,7 @@ using UnityEngine.InputSystem;
 public class PT_PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
+    public Transform cameraTransform;
 
     public float speed = 3;
     public float gravity = -9.18f;
@@ -23,52 +24,73 @@ public class PT_PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        isGrounded = Physics.CheckSphere(
+            groundCheck.position,
+            groundDistance,
+            groundMask
+        );
 
         if (isGrounded && velocity.y < 0)
         {
             velocity.y = -2f;
         }
 
-        // ── Input ────────────────────────────────────────────────────────────
-        float x        = 0f;
-        float z        = 0f;
-        bool  sprint   = false;
-        bool  jumpDown = false;
+        // INPUT
+        float x = 0f;
+        float z = 0f;
+        bool sprint = false;
+        bool jumpDown = false;
 
 #if ENABLE_INPUT_SYSTEM
-        // New Input System (Unity 6 / package com.unity.inputsystem)
         var kb = Keyboard.current;
+
         if (kb != null)
         {
-            if (kb.wKey.isPressed) z  =  1f;
-            if (kb.sKey.isPressed) z  = -1f;
-            if (kb.aKey.isPressed) x  = -1f;
-            if (kb.dKey.isPressed) x  =  1f;
+            if (kb.wKey.isPressed) z = 1f;
+            if (kb.sKey.isPressed) z = -1f;
+            if (kb.aKey.isPressed) x = -1f;
+            if (kb.dKey.isPressed) x = 1f;
 
-            sprint   = kb.leftShiftKey.isPressed;
+            sprint = kb.leftShiftKey.isPressed;
             jumpDown = kb.spaceKey.wasPressedThisFrame;
         }
 #elif ENABLE_LEGACY_INPUT_MANAGER
-        // Legacy Input Manager (Unity 2022 and earlier)
-        x        = Input.GetAxis("Horizontal");
-        z        = Input.GetAxis("Vertical");
-        sprint   = Input.GetKey(KeyCode.LeftShift);
+        x = Input.GetAxis("Horizontal");
+        z = Input.GetAxis("Vertical");
+
+        sprint = Input.GetKey(KeyCode.LeftShift);
         jumpDown = Input.GetButtonDown("Jump");
 #endif
-        // ─────────────────────────────────────────────────────────────────────
 
         speed = (sprint && isGrounded) ? 10f : 5f;
 
-        Vector3 move = transform.right * x + transform.forward * z;
+        // RUCH WZGLĘDEM KAMERY
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+
+        forward.y = 0f;
+        right.y = 0f;
+
+        forward.Normalize();
+        right.Normalize();
+
+        Vector3 move = right * x + forward * z;
+
         controller.Move(move * speed * Time.deltaTime);
 
+        // SKOK
         if (jumpDown && isGrounded)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            velocity.y = Mathf.Sqrt(
+                jumpHeight * -2f * gravity
+            );
         }
 
+        // GRAWITACJA
         velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
+
+        controller.Move(
+            velocity * Time.deltaTime
+        );
     }
 }
